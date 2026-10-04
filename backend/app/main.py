@@ -32,8 +32,8 @@ async def lifespan(app: FastAPI):
         logger.info("No instruments found in database. Starting initial synchronization in background...")
         asyncio.create_task(sync_service.run_sync())
     else:
-        logger.info("Database contains %d instruments. Seeding baseline quotes...", count)
-        market_data_service.seed_initial_quotes_for_active_instruments()
+        logger.info("Database contains %d instruments. Seeding baseline quotes in background...", count)
+        asyncio.get_event_loop().run_in_executor(None, market_data_service.seed_initial_quotes_for_active_instruments)
 
     yield
     logger.info("Shutting down NSE & BSE Platform...")

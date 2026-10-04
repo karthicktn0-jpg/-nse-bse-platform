@@ -6,6 +6,7 @@ from typing import Dict, Any, List, Optional
 from app.database import get_db
 from app.services.market_data_service import market_data_service
 from app.services.derivatives_service import DerivativesService
+from app.services.live_quote_fetcher import live_quote_fetcher
 
 logger = logging.getLogger(__name__)
 
@@ -78,8 +79,11 @@ class PredictionService:
         exchange = inst_data["exchange"]
         has_derivatives = bool(inst_data.get("has_derivatives", 0))
 
-        # 2. Ensure live quote is populated
-        if not inst_data.get("last_price"):
+        # 2. Ensure live quote is fresh from exchange
+        live_q = live_quote_fetcher.update_database_quote(token, trading_symbol, exchange)
+        if live_q:
+            inst_data.update(live_q)
+        elif not inst_data.get("last_price"):
             market_data_service.ensure_quotes_exist([token])
             with get_db() as conn:
                 cursor = conn.cursor()
