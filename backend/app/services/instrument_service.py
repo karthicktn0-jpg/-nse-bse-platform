@@ -25,28 +25,47 @@ class InstrumentService:
         page = max(1, page)
         page_size = min(max(10, page_size), 200)
         offset = (page - 1) * page_size
-
-        allowed_sort = {
-            "trading_symbol": "i.trading_symbol",
-            "name": "i.name",
-            "exchange": "i.exchange",
-            "segment": "i.segment",
-            "instrument_type": "i.instrument_type",
-            "strike": "i.strike",
-            "expiry": "i.expiry"
-        }
-        order_col = allowed_sort.get(sort_by, "i.trading_symbol")
         direction = "DESC" if sort_order.lower() == "desc" else "ASC"
+
+        # Default ordering: prioritize liquid F&O stocks, NSE over BSE, and real tickers over numeric bonds
+        if not query and sort_by == "trading_symbol":
+            order_sql = f"i.has_derivatives DESC, (CASE WHEN i.trading_symbol GLOB '[0-9]*' THEN 1 ELSE 0 END) ASC, (CASE WHEN i.exchange = 'NSE' THEN 0 ELSE 1 END) ASC, i.trading_symbol {direction}"
+        elif query and sort_by == "trading_symbol":
+            clean_q = query.strip().upper()
+            order_sql = f"(CASE WHEN UPPER(i.trading_symbol) = '{clean_q}' THEN 0 WHEN UPPER(i.trading_symbol) LIKE '{clean_q}%' THEN 1 ELSE 2 END) ASC, i.has_derivatives DESC, (CASE WHEN i.exchange = 'NSE' THEN 0 ELSE 1 END) ASC, i.trading_symbol ASC"
+        else:
+            allowed_sort = {
+                "trading_symbol": "i.trading_symbol",
+                "name": "i.name",
+                "exchange": "i.exchange",
+                "segment": "i.segment",
+                "instrument_type": "i.instrument_type",
+                "strike": "i.strike",
+                "expiry": "i.expiry"
+            }
+            order_col = allowed_sort.get(sort_by, "i.trading_symbol")
+            order_sql = f"{order_col} {direction}"
 
         where_clauses = ["i.is_active = 1"]
         params: List[Any] = []
 
-        # Full-Text Search filter
+        # Full-Text Search and flexible substring match
         if query and query.strip():
             clean_q = query.strip().replace('"', '""').replace("'", "''")
             fts_query = f'"{clean_q}"*'
-            where_clauses.append("i.id IN (SELECT rowid FROM instruments_fts WHERE instruments_fts MATCH ?)")
-            params.append(fts_query)
+            where_clauses.append("""
+                (i.id IN (SELECT rowid FROM instruments_fts WHERE instruments_fts MATCH ?)
+                 OR UPPER(i.trading_symbol) LIKE ?
+                 OR UPPER(i.name) LIKE ?
+                 OR REPLACE(UPPER(i.name), ' ', '') LIKE ?
+                 OR UPPER(i.underlying_symbol) LIKE ?)
+            """)
+            q_pattern = f"%{clean_q.upper()}%"
+            q_nospaces = f"%{clean_q.upper().replace(' ', '')}%"
+            params.extend([fts_query, q_pattern, q_pattern, q_nospaces, q_pattern])
+        elif instrument_type == "EQ":
+            # For general equity browsing without search query, exclude numeric bond/debt tickers and dash series
+            where_clauses.append("i.trading_symbol NOT GLOB '[0-9]*' AND i.trading_symbol NOT LIKE '%-%'")
 
         # Universe join/filter
         join_clause = ""
@@ -96,7 +115,7 @@ class InstrumentService:
             {join_clause}
             LEFT JOIN live_quotes lq ON i.instrument_token = lq.instrument_token
             {where_sql}
-            ORDER BY {order_col} {direction}
+            ORDER BY {order_sql}
             LIMIT ? OFFSET ?
         """
 

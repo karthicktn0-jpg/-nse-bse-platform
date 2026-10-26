@@ -9,7 +9,7 @@ from app.services.market_data_service import market_data_service
 from app.sync.sync_service import sync_service
 
 # Routers
-from app.routers import instruments, derivatives, sync, universes, models_lab, market_data, prediction
+from app.routers import instruments, derivatives, sync, universes, models_lab, market_data, prediction, ai_copilot
 
 logging.basicConfig(
     level=logging.INFO,
@@ -61,6 +61,7 @@ app.include_router(universes.router)
 app.include_router(models_lab.router)
 app.include_router(market_data.router)
 app.include_router(prediction.router)
+app.include_router(ai_copilot.router)
 
 @app.get("/")
 def root():

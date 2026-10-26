@@ -1,7 +1,7 @@
 import logging
 import httpx
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Set
 from app.database import get_db
 
 logger = logging.getLogger(__name__)
@@ -10,12 +10,27 @@ class LiveQuoteFetcher:
     def __init__(self):
         # Cache: symbol -> (quote_dict, timestamp)
         self.quote_cache: Dict[str, Any] = {}
+        self.negative_cache: Set[str] = set()
         self.cache_ttl_seconds = 600  # 10 minutes cache
         self.http_client = httpx.Client(
             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"},
-            timeout=6.0,
+            timeout=2.0,
             follow_redirects=True
         )
+
+    @staticmethod
+    def is_valid_equity_symbol(symbol: str) -> bool:
+        clean = symbol.strip().upper()
+        if not clean or len(clean) < 2:
+            return False
+        # Filter out government bonds, state loans, treasury bills
+        if any(clean.endswith(suffix) for suffix in ["-SG", "-GS", "-GB", "-TB"]):
+            return False
+        if clean[0].isdigit() and ("-" in clean or clean.isalnum() and any(c.isalpha() for c in clean)):
+            # e.g. 645HP29-SG or 692HR36A
+            return False
+        # Known valid index or standard stock
+        return True
 
     def fetch_live_quote(self, symbol: str, exchange: str = "NSE") -> Optional[Dict[str, Any]]:
         """
@@ -23,7 +38,12 @@ class LiveQuoteFetcher:
         the live exchange feed (identical to Google Finance / NSE).
         """
         clean_sym = symbol.strip().upper()
+        if not self.is_valid_equity_symbol(clean_sym):
+            return None
+
         cache_key = f"{clean_sym}:{exchange}"
+        if cache_key in self.negative_cache:
+            return None
         
         # Check in-memory cache first
         now = datetime.now()
@@ -95,6 +115,7 @@ class LiveQuoteFetcher:
                 logger.debug(f"Failed fetching {query_ticker} from {ep}: {e}")
                 continue
 
+        self.negative_cache.add(cache_key)
         return None
 
     def update_database_quote(self, instrument_token: str, symbol: str, exchange: str = "NSE") -> Optional[Dict[str, Any]]:

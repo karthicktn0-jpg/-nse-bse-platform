@@ -72,14 +72,23 @@ class MarketDataService:
                 strike = inst["strike"]
                 exch = inst["exchange"]
 
-                # 1. For Cash Equities and Indices: Fetch authentic real market price!
-                if itype in ('EQ', 'INDEX'):
-                    live_q = live_quote_fetcher.update_database_quote(tok, sym, exch)
-                    if live_q:
-                        continue
-
+                # 1. Use pre-cached verified quote if already available in memory
+                clean_sym = sym.strip().upper()
+                cache_key = f"{clean_sym}:{exch}"
+                cached = live_quote_fetcher.quote_cache.get(cache_key)
+                if cached:
+                    c_quote = cached[0]
+                    price = c_quote["last_price"]
+                    opn = c_quote["open"]
+                    high = c_quote["high"]
+                    low = c_quote["low"]
+                    cls = c_quote["close"]
+                    change = c_quote["change"]
+                    change_pct = c_quote["change_percent"]
+                    vol = c_quote["volume"]
+                    oi = 0
                 # 2. For Options: compute price relative to underlying spot
-                if itype in ('OPTSTK', 'OPTIDX') and strike:
+                elif itype in ('OPTSTK', 'OPTIDX') and strike:
                     k = float(strike)
                     # Resolve underlying spot from live_quotes
                     cursor.execute("""
@@ -107,17 +116,28 @@ class MarketDataService:
                     price = round(spot * 1.003, 2)
                     oi = random.randint(100000, 1500000)
                 else:
-                    hash_val = sum(ord(c) for c in sym)
-                    price = round(50.0 + (hash_val % 2800) + random.uniform(0.1, 0.9), 2)
-                    oi = 0
-
-                high = round(price * 1.012, 2)
-                low = round(price * 0.988, 2)
-                opn = round(price * 0.995, 2)
-                cls = round(price * 0.997, 2)
-                change = round(price - cls, 2)
-                change_pct = round((change / cls) * 100, 2)
-                vol = random.randint(10000, 500000)
+                    # Attempt fetching authentic exchange quote
+                    live_q = live_quote_fetcher.fetch_live_quote(sym, exch)
+                    if live_q and live_q.get("last_price"):
+                        price = live_q["last_price"]
+                        high = live_q["high"]
+                        low = live_q["low"]
+                        opn = live_q["open"]
+                        cls = live_q["close"]
+                        change = live_q["change"]
+                        change_pct = live_q["change_percent"]
+                        vol = live_q["volume"]
+                        oi = 0
+                    else:
+                        price = 250.0
+                        high = round(price * 1.012, 2)
+                        low = round(price * 0.988, 2)
+                        opn = round(price * 0.995, 2)
+                        cls = round(price * 0.997, 2)
+                        change = round(price - cls, 2)
+                        change_pct = round((change / cls) * 100, 2)
+                        vol = 25000
+                        oi = 0
 
                 cursor.execute("""
                     INSERT OR IGNORE INTO live_quotes (

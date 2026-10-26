@@ -8,6 +8,7 @@ interface InstrumentDetailModalProps {
   onOpenOptionChain: (symbol: string) => void;
   onOpenFutures: (symbol: string) => void;
   onOpenPrediction?: (symbol: string) => void;
+  onOpenAiCopilot?: (symbol: string) => void;
 }
 
 export const InstrumentDetailModal: React.FC<InstrumentDetailModalProps> = ({
@@ -15,7 +16,8 @@ export const InstrumentDetailModal: React.FC<InstrumentDetailModalProps> = ({
   onClose,
   onOpenOptionChain,
   onOpenFutures,
-  onOpenPrediction
+  onOpenPrediction,
+  onOpenAiCopilot
 }) => {
   const [livePrice, setLivePrice] = useState<number | undefined>(instrument?.last_price);
   const [liveChange, setLiveChange] = useState<number | undefined>(instrument?.change);
@@ -194,6 +196,18 @@ export const InstrumentDetailModal: React.FC<InstrumentDetailModalProps> = ({
 
         {/* Action Buttons */}
         <div className="p-4 bg-[#0d1322] border-t border-slate-800 flex items-center justify-end space-x-2">
+          {onOpenAiCopilot && (
+            <button
+              onClick={() => {
+                onClose();
+                onOpenAiCopilot(instrument.trading_symbol);
+              }}
+              className="px-3.5 py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold rounded-lg text-xs transition-all shadow-lg shadow-blue-600/30 flex items-center space-x-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+              <span>Ask AI Copilot</span>
+            </button>
+          )}
           {onOpenPrediction && (
             <button
               onClick={() => {

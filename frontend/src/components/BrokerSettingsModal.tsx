@@ -21,7 +21,7 @@ export const BrokerSettingsModal: React.FC<BrokerSettingsModalProps> = ({ isOpen
         .then((r) => r.json())
         .then((data) => {
           if (data.active_provider) setActiveProvider(data.active_provider);
-          if (data.kotak_consumer_key) setKotakKey(data.kotak_consumer_key);
+          if (data.kotak_consumer_key_preview) setKotakKey(data.kotak_consumer_key_preview);
         })
         .catch(console.error);
     }

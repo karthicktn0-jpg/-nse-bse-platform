@@ -10,6 +10,8 @@ import { UniverseManagerView } from './components/UniverseManagerView';
 import { ModelLabView } from './components/ModelLabView';
 import { InstrumentDetailModal } from './components/InstrumentDetailModal';
 import { BrokerSettingsModal } from './components/BrokerSettingsModal';
+import { StockAiModal } from './components/StockAiModal';
+import { FloatingAiButton } from './components/FloatingAiButton';
 import { api } from './api/client';
 import { Instrument, SyncStatus } from './types';
 
@@ -17,6 +19,8 @@ export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavTab>('ALL_STOCKS');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isBrokerSettingsOpen, setIsBrokerSettingsOpen] = useState(false);
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [aiSelectedSymbol, setAiSelectedSymbol] = useState<string>('TCS');
   const [selectedInstrument, setSelectedInstrument] = useState<Instrument | null>(null);
   const [selectedSymbolForOptions, setSelectedSymbolForOptions] = useState<string>('NIFTY');
   const [selectedSymbolForFutures, setSelectedSymbolForFutures] = useState<string>('NIFTY');
@@ -52,6 +56,11 @@ export const App: React.FC = () => {
     setActiveTab('PREDICTION');
   };
 
+  const handleOpenAiCopilot = (symbol: string) => {
+    setAiSelectedSymbol(symbol);
+    setIsAiModalOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col font-sans">
       {/* Global Navbar */}
@@ -79,6 +88,7 @@ export const App: React.FC = () => {
             initialSymbol={selectedSymbolForPrediction}
             onOpenOptionChain={handleOpenOptionChain}
             onOpenFutures={handleOpenFutures}
+            onOpenAiCopilot={handleOpenAiCopilot}
           />
         )}
 
@@ -174,12 +184,28 @@ export const App: React.FC = () => {
         onOpenOptionChain={handleOpenOptionChain}
         onOpenFutures={handleOpenFutures}
         onOpenPrediction={handleOpenPrediction}
+        onOpenAiCopilot={handleOpenAiCopilot}
       />
 
       {/* Broker Credentials & Live Feed Modal */}
       <BrokerSettingsModal
         isOpen={isBrokerSettingsOpen}
         onClose={() => setIsBrokerSettingsOpen(false)}
+      />
+
+      {/* Stock AI Copilot Pop-up Modal */}
+      <StockAiModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        defaultSymbol={aiSelectedSymbol}
+        onOpenOptionChain={handleOpenOptionChain}
+        onOpenFutures={handleOpenFutures}
+      />
+
+      {/* Floating AI Copilot Trigger */}
+      <FloatingAiButton
+        onClick={() => handleOpenAiCopilot(selectedInstrument?.trading_symbol || selectedSymbolForPrediction || 'TCS')}
+        currentSymbol={selectedInstrument?.trading_symbol || selectedSymbolForPrediction || 'TCS'}
       />
 
       {/* Footer */}

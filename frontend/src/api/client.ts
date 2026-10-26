@@ -152,5 +152,48 @@ export const api = {
     const res = await fetch(`${API_BASE}/prediction/opportunities`);
     if (!res.ok) throw new Error('Failed to fetch market opportunities');
     return res.json();
+  },
+
+  // --- AI Copilot Endpoints ---
+  async getAiConfig(): Promise<any> {
+    const res = await fetch(`${API_BASE}/ai/config`);
+    if (!res.ok) throw new Error('Failed to fetch AI configuration');
+    return res.json();
+  },
+
+  async updateAiConfig(payload: { provider?: string; gemini_key?: string; openai_key?: string; groq_key?: string }) {
+    const res = await fetch(`${API_BASE}/ai/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Failed to update AI configuration');
+    return res.json();
+  },
+
+  async analyzeStock(symbol: string, custom_prompt?: string, provider?: string, api_key?: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/ai/analyze-stock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbol, custom_prompt, provider, api_key })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to analyze stock with AI' }));
+      throw new Error(err.detail || 'Failed to analyze stock with AI');
+    }
+    return res.json();
+  },
+
+  async chatWithAi(messages: { role: string; content: string }[], symbol?: string, provider?: string, api_key?: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/ai/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages, symbol, provider, api_key })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to chat with AI copilot' }));
+      throw new Error(err.detail || 'Failed to chat with AI copilot');
+    }
+    return res.json();
   }
 };

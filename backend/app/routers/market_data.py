@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Query, Body, HTTPException, WebSocket, WebSocketDisconnect
 from typing import List
+from datetime import datetime
 import asyncio
 import json
 import random
@@ -15,10 +16,11 @@ def get_market_data_stats():
 @router.get("/provider-config")
 def get_provider_config():
     from app.config import settings
+    key_preview = f"{settings.kotak_consumer_key[:4]}••••••••{settings.kotak_consumer_key[-4:]}" if len(settings.kotak_consumer_key) >= 8 else ("••••••••" if settings.kotak_consumer_key else "")
     return {
         "active_provider": settings.active_live_provider,
-        "kotak_consumer_key_preview": f"{settings.kotak_consumer_key[:8]}...{settings.kotak_consumer_key[-6:]}" if settings.kotak_consumer_key else "",
-        "kotak_consumer_key": settings.kotak_consumer_key,
+        "kotak_consumer_key_preview": key_preview,
+        "is_configured": bool(settings.kotak_consumer_key),
         "status": "CONNECTED_LIVE_FEED",
         "tick_interval_seconds": 1.0,
         "market_hours_mode": "REALTIME_TICK_STREAM",
@@ -32,11 +34,17 @@ def update_provider_config(payload: dict = Body(...)):
     if provider:
         settings.active_live_provider = provider
     if "kotak_consumer_key" in payload:
-        settings.kotak_consumer_key = payload["kotak_consumer_key"]
+        new_key = str(payload["kotak_consumer_key"]).strip()
+        if new_key and "••" not in new_key:
+            settings.kotak_consumer_key = new_key
     if "dhan_access_token" in payload:
-        settings.dhan_access_token = payload["dhan_access_token"]
+        new_token = str(payload["dhan_access_token"]).strip()
+        if new_token and "••" not in new_token:
+            settings.dhan_access_token = new_token
     if "kite_api_key" in payload:
-        settings.kite_api_key = payload["kite_api_key"]
+        new_k = str(payload["kite_api_key"]).strip()
+        if new_k and "••" not in new_k:
+            settings.kite_api_key = new_k
     return {"status": "UPDATED", "active_provider": settings.active_live_provider}
 
 @router.get("/quote/{token:path}")

@@ -172,13 +172,36 @@ export interface Universe {
   member_count: number;
 }
 
+export interface PivotPoints {
+  pivot: number;
+  r1: number;
+  r2: number;
+  r3: number;
+  s1: number;
+  s2: number;
+  s3: number;
+}
+
+export interface FibonacciPivots {
+  r1: number;
+  r2: number;
+  r3: number;
+  s1: number;
+  s2: number;
+  s3: number;
+}
+
 export interface TradeLevels {
+  strategy_name?: string;
   entry_zone: string;
   target_1: number;
   target_2: number;
+  target_3?: number;
   stop_loss: number;
+  trailing_stop?: number;
   expected_move_pct: string;
   volatility_atr: number;
+  win_probability_pct?: number;
 }
 
 export interface TechnicalIndicators {
@@ -197,6 +220,14 @@ export interface TechnicalIndicators {
   macd_line: number;
   macd_signal: number;
   macd_histogram: number;
+  pivot_points?: PivotPoints;
+  fibonacci_pivots?: FibonacciPivots;
+  supertrend?: {
+    direction: 'BULLISH' | 'BEARISH';
+    value: number;
+  };
+  volume_spike_ratio?: number;
+  institutional_activity?: string;
 }
 
 export interface DerivativesConfluence {
@@ -205,6 +236,25 @@ export interface DerivativesConfluence {
   max_pain_strike?: number;
   futures_buildup?: string;
   basis_spread?: number;
+  resistance_wall_call_oi?: number;
+  support_floor_put_oi?: number;
+}
+
+export interface HistoricalAnalysis {
+  perf_1w?: number;
+  perf_1m?: number;
+  perf_3m?: number;
+  perf_6m?: number;
+  perf_1y?: number;
+  high_52w?: number;
+  low_52w?: number;
+  distance_from_52w_high_pct?: number;
+  historical_volatility_pct?: number;
+  quarterly_ai_target?: number;
+  quarterly_ai_stop?: number;
+  quarterly_risk_reward?: string;
+  quarterly_catalyst?: string;
+  historical_trend_summary?: string;
 }
 
 export interface HorizonItem {
@@ -216,6 +266,8 @@ export interface HorizonItem {
   stop_loss?: number;
   key_driver: string;
   confidence: number;
+  risk_profile?: string;
+  quarterly_catalyst?: string;
 }
 
 export interface PredictionResponse {
@@ -244,9 +296,53 @@ export interface PredictionResponse {
     ultra_short_5m: HorizonItem;
     intraday_eod: HorizonItem;
     swing_5d: HorizonItem;
+    positional_1m?: HorizonItem;
+    quarterly_3m?: HorizonItem;
   };
+  historical_analysis?: HistoricalAnalysis;
   commentary?: string[];
   timestamp?: string;
+}
+
+// --- AI Copilot Interfaces ---
+export interface AiProviderInfo {
+  id: string;
+  name: string;
+  models: string[];
+  free_key_url: string;
+}
+
+export interface AiConfigResponse {
+  active_provider: string;
+  has_gemini_key: boolean;
+  has_openai_key: boolean;
+  has_groq_key: boolean;
+  gemini_key_preview: string;
+  openai_key_preview: string;
+  supported_providers: AiProviderInfo[];
+}
+
+export interface AiAnalyzeResponse {
+  symbol: string;
+  provider: string;
+  model: string;
+  content: string;
+  trade_levels?: TradeLevels;
+  technicals?: TechnicalIndicators;
+  forecast?: PredictionResponse;
+}
+
+export interface AiChatMessage {
+  id?: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp?: string;
+}
+
+export interface AiChatResponse {
+  reply: string;
+  provider: string;
+  symbol: string;
 }
 
 export interface MarketOpportunitiesResponse {

@@ -18,7 +18,8 @@ import {
   Compass,
   CheckCircle2,
   RefreshCw,
-  Sliders
+  Sliders,
+  Calendar
 } from 'lucide-react';
 import { api } from '../api/client';
 import { PredictionResponse, MarketOpportunitiesResponse } from '../types';
@@ -27,6 +28,7 @@ interface PredictionViewProps {
   initialSymbol?: string;
   onOpenOptionChain: (symbol: string) => void;
   onOpenFutures: (symbol: string) => void;
+  onOpenAiCopilot?: (symbol: string) => void;
 }
 
 const QUICK_STOCKS = [
@@ -45,7 +47,8 @@ const QUICK_STOCKS = [
 export const PredictionView: React.FC<PredictionViewProps> = ({
   initialSymbol = 'NIFTY',
   onOpenOptionChain,
-  onOpenFutures
+  onOpenFutures,
+  onOpenAiCopilot
 }) => {
   const [symbol, setSymbol] = useState(initialSymbol);
   const [searchInput, setSearchInput] = useState('');
@@ -322,6 +325,15 @@ export const PredictionView: React.FC<PredictionViewProps> = ({
 
               {/* Right: Actions */}
               <div className="flex flex-col space-y-2">
+                {onOpenAiCopilot && (
+                  <button
+                    onClick={() => onOpenAiCopilot(forecast.symbol)}
+                    className="px-4 py-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center space-x-1.5"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                    <span>Ask AI Copilot</span>
+                  </button>
+                )}
                 {forecast.has_derivatives && (
                   <>
                     <button
@@ -346,51 +358,86 @@ export const PredictionView: React.FC<PredictionViewProps> = ({
 
           {/* Price Targets & Risk Management Grid */}
           {forecast.trade_levels && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-[#111827] p-4 rounded-xl border border-slate-800 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Optimal Entry Zone
-                </span>
-                <div className="text-base font-bold font-mono text-white">
-                  ₹{forecast.trade_levels.entry_zone}
+            <div className="space-y-3">
+              {forecast.trade_levels.strategy_name && (
+                <div className="p-3.5 bg-[#0d1322] border border-blue-500/30 rounded-xl flex items-center justify-between flex-wrap gap-2 text-xs shadow-md">
+                  <div className="flex items-center space-x-2">
+                    <Zap className="w-4 h-4 text-amber-400" />
+                    <span className="text-slate-400 font-medium">Tactical Strategy:</span>
+                    <span className="font-bold text-white text-sm">{forecast.trade_levels.strategy_name}</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    {forecast.trade_levels.trailing_stop && (
+                      <span className="text-slate-300 font-mono">
+                        Supertrend Trailing Stop: <strong className="text-amber-400 font-bold">₹{forecast.trade_levels.trailing_stop.toFixed(2)}</strong>
+                      </span>
+                    )}
+                    {forecast.trade_levels.win_probability_pct && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 font-mono">
+                        Win Probability: {forecast.trade_levels.win_probability_pct}%
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="text-[10px] text-slate-500">Tight institutional range</div>
-              </div>
+              )}
 
-              <div className="bg-emerald-950/20 p-4 rounded-xl border border-emerald-500/30 space-y-1">
-                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block flex items-center">
-                  <Target className="w-3.5 h-3.5 mr-1" />
-                  Target 1 (1.1x ATR)
-                </span>
-                <div className="text-xl font-black font-mono text-emerald-300">
-                  ₹{forecast.trade_levels.target_1.toFixed(2)}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <div className="bg-[#111827] p-3.5 rounded-xl border border-slate-800 space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Optimal Entry Zone
+                  </span>
+                  <div className="text-base font-bold font-mono text-white">
+                    ₹{forecast.trade_levels.entry_zone}
+                  </div>
+                  <div className="text-[10px] text-slate-500">Tight liquidity pool</div>
                 </div>
-                <div className="text-[10px] text-emerald-400/80 font-mono">
-                  Expected Return: {forecast.trade_levels.expected_move_pct}
-                </div>
-              </div>
 
-              <div className="bg-emerald-950/20 p-4 rounded-xl border border-emerald-500/30 space-y-1">
-                <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider block flex items-center">
-                  <Target className="w-3.5 h-3.5 mr-1" />
-                  Target 2 (Extended 2.2x ATR)
-                </span>
-                <div className="text-xl font-black font-mono text-cyan-300">
-                  ₹{forecast.trade_levels.target_2.toFixed(2)}
+                <div className="bg-emerald-950/20 p-3.5 rounded-xl border border-emerald-500/30 space-y-1">
+                  <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block flex items-center">
+                    <Target className="w-3.5 h-3.5 mr-1" />
+                    Target 1 (1.1x ATR)
+                  </span>
+                  <div className="text-lg font-black font-mono text-emerald-300">
+                    ₹{forecast.trade_levels.target_1.toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-emerald-400/80 font-mono">
+                    Move: {forecast.trade_levels.expected_move_pct}
+                  </div>
                 </div>
-                <div className="text-[10px] text-cyan-400/80">Trend runner objective</div>
-              </div>
 
-              <div className="bg-rose-950/20 p-4 rounded-xl border border-rose-500/30 space-y-1">
-                <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider block flex items-center">
-                  <ShieldAlert className="w-3.5 h-3.5 mr-1" />
-                  Invalidation Stop Loss
-                </span>
-                <div className="text-xl font-black font-mono text-rose-300">
-                  ₹{forecast.trade_levels.stop_loss.toFixed(2)}
+                <div className="bg-emerald-950/20 p-3.5 rounded-xl border border-emerald-500/30 space-y-1">
+                  <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider block flex items-center">
+                    <Target className="w-3.5 h-3.5 mr-1" />
+                    Target 2 (Extended)
+                  </span>
+                  <div className="text-lg font-black font-mono text-cyan-300">
+                    ₹{forecast.trade_levels.target_2.toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-cyan-400/80">Major structural swing</div>
                 </div>
-                <div className="text-[10px] text-rose-400/80 font-mono">
-                  Risk / Reward: {forecast.risk_reward_ratio}
+
+                <div className="bg-emerald-950/20 p-3.5 rounded-xl border border-emerald-500/30 space-y-1">
+                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block flex items-center">
+                    <Target className="w-3.5 h-3.5 mr-1" />
+                    Target 3 (Runner)
+                  </span>
+                  <div className="text-lg font-black font-mono text-indigo-300">
+                    ₹{(forecast.trade_levels.target_3 || forecast.trade_levels.target_2 * 1.02).toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-indigo-400/80">Breakout continuation</div>
+                </div>
+
+                <div className="bg-rose-950/20 p-3.5 rounded-xl border border-rose-500/30 space-y-1">
+                  <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider block flex items-center">
+                    <ShieldAlert className="w-3.5 h-3.5 mr-1" />
+                    Invalidation Stop Loss
+                  </span>
+                  <div className="text-lg font-black font-mono text-rose-300">
+                    ₹{forecast.trade_levels.stop_loss.toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-rose-400/80 font-mono">
+                    R:R: {forecast.risk_reward_ratio}
+                  </div>
                 </div>
               </div>
             </div>
@@ -409,65 +456,207 @@ export const PredictionView: React.FC<PredictionViewProps> = ({
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 {/* 1-5 Minutes Scalp */}
-                <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-2">
+                <div className="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800 space-y-2 flex flex-col justify-between">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-white">Ultra-Short (1-5 Min)</span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300">
+                    <span className="text-xs font-bold text-white">15 Min Scalp</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-500/20 text-purple-300">
                       Scalp
                     </span>
                   </div>
-                  <div className="text-lg font-black font-mono text-purple-300 flex items-center space-x-1">
-                    <span>{forecast.horizons.ultra_short_5m.direction}</span>
-                    <span className="text-xs text-slate-400">(±{forecast.horizons.ultra_short_5m.expected_delta_pts} pts)</span>
+                  <div className="text-base font-black font-mono text-purple-300">
+                    {forecast.horizons.ultra_short_5m.direction}
+                    <span className="text-[11px] text-slate-400 block font-normal">±{forecast.horizons.ultra_short_5m.expected_delta_pts} pts</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[10px] text-slate-400 line-clamp-2">
                     {forecast.horizons.ultra_short_5m.key_driver}
                   </p>
                   <div className="text-[10px] font-mono text-slate-500">
-                    Confidence: {forecast.horizons.ultra_short_5m.confidence}%
+                    Conf: {forecast.horizons.ultra_short_5m.confidence}%
                   </div>
                 </div>
 
                 {/* Intraday EOD */}
-                <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-2">
+                <div className="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800 space-y-2 flex flex-col justify-between">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-white">Intraday (Session EOD)</span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300">
+                    <span className="text-xs font-bold text-white">Intraday (EOD)</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500/20 text-blue-300">
                       Primary
                     </span>
                   </div>
-                  <div className="text-lg font-black font-mono text-blue-300">
+                  <div className="text-base font-black font-mono text-blue-300">
                     {forecast.horizons.intraday_eod.expected_return_pct}
+                    <span className="text-[11px] text-slate-400 block font-normal">Tgt ₹{forecast.horizons.intraday_eod.target}</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[10px] text-slate-400 line-clamp-2">
                     {forecast.horizons.intraday_eod.key_driver}
                   </p>
                   <div className="text-[10px] font-mono text-slate-500">
-                    Confidence: {forecast.horizons.intraday_eod.confidence}%
+                    Conf: {forecast.horizons.intraday_eod.confidence}%
                   </div>
                 </div>
 
                 {/* Swing 5-Day */}
-                <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-2">
+                <div className="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800 space-y-2 flex flex-col justify-between">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-white">Multi-Day Swing (1-5 Days)</span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300">
-                      Positional
+                    <span className="text-xs font-bold text-white">Swing (1-5 Days)</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300">
+                      Swing
                     </span>
                   </div>
-                  <div className="text-lg font-black font-mono text-emerald-300">
+                  <div className="text-base font-black font-mono text-emerald-300">
                     {forecast.horizons.swing_5d.expected_return_pct}
+                    <span className="text-[11px] text-slate-400 block font-normal">Tgt ₹{forecast.horizons.swing_5d.target}</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[10px] text-slate-400 line-clamp-2">
                     {forecast.horizons.swing_5d.key_driver}
                   </p>
                   <div className="text-[10px] font-mono text-slate-500">
-                    Confidence: {forecast.horizons.swing_5d.confidence}%
+                    Conf: {forecast.horizons.swing_5d.confidence}%
+                  </div>
+                </div>
+
+                {/* Positional 1-Month */}
+                <div className="bg-slate-900/60 p-3.5 rounded-xl border border-slate-800 space-y-2 flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white">Position (1 Month)</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-500/20 text-indigo-300">
+                      1-Month
+                    </span>
+                  </div>
+                  <div className="text-base font-black font-mono text-indigo-300">
+                    {forecast.horizons.positional_1m?.expected_return_pct || 'N/A'}
+                    <span className="text-[11px] text-slate-400 block font-normal">Tgt ₹{forecast.horizons.positional_1m?.target}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 line-clamp-2">
+                    {forecast.horizons.positional_1m?.key_driver}
+                  </p>
+                  <div className="text-[10px] font-mono text-slate-500">
+                    Conf: {forecast.horizons.positional_1m?.confidence}%
+                  </div>
+                </div>
+
+                {/* Quarterly 3-Month AI Horizon */}
+                <div className="bg-gradient-to-b from-amber-500/10 via-slate-900/80 to-slate-900 p-3.5 rounded-xl border border-amber-500/30 space-y-2 flex flex-col justify-between relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/10 rounded-full blur-xl pointer-events-none"></div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-300 flex items-center space-x-1">
+                      <Sparkles className="w-3 h-3 text-amber-400" />
+                      <span>3 Months / 90D</span>
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/30 text-amber-200 border border-amber-400/30">
+                      AI Horizon
+                    </span>
+                  </div>
+                  <div className="text-base font-black font-mono text-amber-300">
+                    {forecast.horizons.quarterly_3m?.expected_return_pct || 'N/A'}
+                    <span className="text-[11px] text-amber-200/80 block font-semibold">Tgt ₹{forecast.horizons.quarterly_3m?.target}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-300 line-clamp-2">
+                    {forecast.horizons.quarterly_3m?.key_driver}
+                  </p>
+                  <div className="text-[10px] font-mono text-amber-400 font-semibold">
+                    Conf: {forecast.horizons.quarterly_3m?.confidence}%
                   </div>
                 </div>
               </div>
+
+              {/* Dedicated Historical Price Analysis & 3-Month AI Target Panel */}
+              {forecast.historical_analysis && (
+                <div className="mt-4 pt-4 border-t border-slate-800/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-200 flex items-center space-x-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Historical Data Trends & 3-Month AI Target Synthesis</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      Annualized Volatility: <span className="text-white font-bold">{forecast.historical_analysis.historical_volatility_pct}%</span>
+                    </span>
+                  </div>
+
+                  {/* Historical Return Pills */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    <div className="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800 text-center">
+                      <span className="text-[10px] font-semibold text-slate-400 block">1 Week</span>
+                      <span className={`text-xs font-black font-mono ${(forecast.historical_analysis.perf_1w || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {(forecast.historical_analysis.perf_1w || 0) >= 0 ? '+' : ''}{forecast.historical_analysis.perf_1w}%
+                      </span>
+                    </div>
+                    <div className="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800 text-center">
+                      <span className="text-[10px] font-semibold text-slate-400 block">1 Month</span>
+                      <span className={`text-xs font-black font-mono ${(forecast.historical_analysis.perf_1m || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {(forecast.historical_analysis.perf_1m || 0) >= 0 ? '+' : ''}{forecast.historical_analysis.perf_1m}%
+                      </span>
+                    </div>
+                    <div className="bg-slate-900/80 p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 text-center">
+                      <span className="text-[10px] font-bold text-amber-300 block">3 Months (Past)</span>
+                      <span className={`text-xs font-black font-mono ${(forecast.historical_analysis.perf_3m || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {(forecast.historical_analysis.perf_3m || 0) >= 0 ? '+' : ''}{forecast.historical_analysis.perf_3m}%
+                      </span>
+                    </div>
+                    <div className="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800 text-center">
+                      <span className="text-[10px] font-semibold text-slate-400 block">6 Months</span>
+                      <span className={`text-xs font-black font-mono ${(forecast.historical_analysis.perf_6m || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {(forecast.historical_analysis.perf_6m || 0) >= 0 ? '+' : ''}{forecast.historical_analysis.perf_6m}%
+                      </span>
+                    </div>
+                    <div className="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800 text-center">
+                      <span className="text-[10px] font-semibold text-slate-400 block">1 Year</span>
+                      <span className={`text-xs font-black font-mono ${(forecast.historical_analysis.perf_1y || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {(forecast.historical_analysis.perf_1y || 0) >= 0 ? '+' : ''}{forecast.historical_analysis.perf_1y}%
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 52-Week Range & 3-Month Target Summary */}
+                  <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* 52-Week Range Bar */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-[11px] font-mono">
+                        <span className="text-slate-400">52W Low: <span className="text-rose-300">₹{forecast.historical_analysis.low_52w}</span></span>
+                        <span className="text-slate-400">52W High: <span className="text-emerald-300">₹{forecast.historical_analysis.high_52w}</span></span>
+                      </div>
+                      <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden relative">
+                        <div
+                          className="h-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-500 rounded-full"
+                          style={{
+                            width: `${Math.min(100, Math.max(5, (((forecast.current_price || 0) - (forecast.historical_analysis.low_52w || 0)) / Math.max(1, (forecast.historical_analysis.high_52w || 1) - (forecast.historical_analysis.low_52w || 0))) * 100))}%`
+                          }}
+                        ></div>
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        From 52-Week High: <span className="font-mono text-slate-200">{forecast.historical_analysis.distance_from_52w_high_pct}%</span>
+                      </div>
+                    </div>
+
+                    {/* 3-Month AI Target Levels */}
+                    <div className="flex items-center justify-between bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+                      <div>
+                        <span className="text-[10px] text-amber-300 font-bold block">3-Month AI Target</span>
+                        <span className="text-sm font-black font-mono text-white">₹{forecast.historical_analysis.quarterly_ai_target}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-semibold block">Quarterly Stop</span>
+                        <span className="text-sm font-black font-mono text-rose-400">₹{forecast.historical_analysis.quarterly_ai_stop}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-semibold block">Risk/Reward</span>
+                        <span className="text-xs font-black font-mono text-emerald-400">{forecast.historical_analysis.quarterly_risk_reward}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Summary context */}
+                  <div className="p-2.5 bg-blue-950/30 border border-blue-900/40 rounded-lg text-xs text-blue-200 flex items-start space-x-2">
+                    <Sparkles className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="font-bold text-white">3-Month Strategic Context: </span>
+                      {forecast.historical_analysis.historical_trend_summary}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -568,6 +757,23 @@ export const PredictionView: React.FC<PredictionViewProps> = ({
                     <span className="text-[10px] text-slate-400">Expirational magnetic anchor</span>
                   </div>
 
+                  {/* Institutional Walls */}
+                  <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block mb-1">Resistance Wall (Max Call OI):</span>
+                    <div className="text-base font-bold font-mono text-rose-400">
+                      {forecast.derivatives_confluence.resistance_wall_call_oi ? `₹${forecast.derivatives_confluence.resistance_wall_call_oi}` : '—'}
+                    </div>
+                    <span className="text-[10px] text-slate-400">Heavy call writing ceiling</span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800">
+                    <span className="text-[10px] text-slate-400 block mb-1">Support Floor (Max Put OI):</span>
+                    <div className="text-base font-bold font-mono text-emerald-400">
+                      {forecast.derivatives_confluence.support_floor_put_oi ? `₹${forecast.derivatives_confluence.support_floor_put_oi}` : '—'}
+                    </div>
+                    <span className="text-[10px] text-slate-400">Heavy put writing cushion</span>
+                  </div>
+
                   <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800 col-span-2">
                     <span className="text-[10px] text-slate-400 block mb-1">Futures Buildup Classification:</span>
                     <div className="text-sm font-bold text-white">
@@ -590,6 +796,108 @@ export const PredictionView: React.FC<PredictionViewProps> = ({
               )}
             </div>
           </div>
+
+          {/* Classical & Fibonacci Pivot Points Grid */}
+          {forecast.technicals?.pivot_points && (
+            <div className="bg-[#111827] p-5 rounded-2xl border border-slate-800 space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                  <Target className="w-4 h-4 text-amber-400" />
+                  <span>Classical Floor & Fibonacci Pivot Points Grid</span>
+                </h3>
+                {forecast.technicals.supertrend && (
+                  <div className="flex items-center space-x-2 text-xs">
+                    <span className="text-slate-400">Supertrend (14, 3.0):</span>
+                    <span className={`px-2 py-0.5 rounded font-mono font-bold ${
+                      forecast.technicals.supertrend.direction === 'BULLISH'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                    }`}>
+                      {forecast.technicals.supertrend.direction} @ ₹{forecast.technicals.supertrend.value.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+                {/* Classical Floor Pivots */}
+                <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-2">
+                  <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block font-sans">
+                    Classical Floor Pivots
+                  </span>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center text-rose-400">
+                      <span>Resistance 3 (R3):</span>
+                      <span className="font-bold">₹{forecast.technicals.pivot_points.r3.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-rose-400">
+                      <span>Resistance 2 (R2):</span>
+                      <span className="font-bold">₹{forecast.technicals.pivot_points.r2.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-rose-300">
+                      <span>Resistance 1 (R1):</span>
+                      <span className="font-bold">₹{forecast.technicals.pivot_points.r1.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1 border-y border-slate-700 font-bold text-white bg-slate-800/40 px-2 rounded">
+                      <span>Central Pivot (P):</span>
+                      <span className="text-amber-300">₹{forecast.technicals.pivot_points.pivot.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-emerald-300">
+                      <span>Support 1 (S1):</span>
+                      <span className="font-bold">₹{forecast.technicals.pivot_points.s1.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-emerald-400">
+                      <span>Support 2 (S2):</span>
+                      <span className="font-bold">₹{forecast.technicals.pivot_points.s2.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-emerald-400">
+                      <span>Support 3 (S3):</span>
+                      <span className="font-bold">₹{forecast.technicals.pivot_points.s3.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Fibonacci Pivots */}
+                {forecast.technicals.fibonacci_pivots && (
+                  <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block font-sans">
+                      Fibonacci Retracement Pivots
+                    </span>
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center text-rose-400">
+                        <span>Fib R3 (100.0%):</span>
+                        <span className="font-bold">₹{forecast.technicals.fibonacci_pivots.r3.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-rose-400">
+                        <span>Fib R2 (61.8%):</span>
+                        <span className="font-bold">₹{forecast.technicals.fibonacci_pivots.r2.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-rose-300">
+                        <span>Fib R1 (38.2%):</span>
+                        <span className="font-bold">₹{forecast.technicals.fibonacci_pivots.r1.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-1 border-y border-slate-700 font-bold text-white bg-slate-800/40 px-2 rounded">
+                        <span>Central Fulcrum (P):</span>
+                        <span className="text-amber-300">₹{forecast.technicals.pivot_points.pivot.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-emerald-300">
+                        <span>Fib S1 (38.2%):</span>
+                        <span className="font-bold">₹{forecast.technicals.fibonacci_pivots.s1.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-emerald-400">
+                        <span>Fib S2 (61.8%):</span>
+                        <span className="font-bold">₹{forecast.technicals.fibonacci_pivots.s2.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-emerald-400">
+                        <span>Fib S3 (100.0%):</span>
+                        <span className="font-bold">₹{forecast.technicals.fibonacci_pivots.s3.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* AI Quantitative Reasoning & Commentary */}
           {forecast.commentary && forecast.commentary.length > 0 && (

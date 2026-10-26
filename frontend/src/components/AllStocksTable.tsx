@@ -44,12 +44,21 @@ export const AllStocksTable: React.FC<AllStocksTableProps> = ({
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [exchangeFilter, setExchangeFilter] = useState<string>(initialExchange || '');
   const [instrumentTypeFilter, setInstrumentTypeFilter] = useState<string>(initialSegment || 'EQ');
   const [fnoOnlyFilter, setFnoOnlyFilter] = useState<boolean | undefined>(initialHasFno);
   const [universeFilter, setUniverseFilter] = useState<string>(initialUniverseId || '');
   const [sortBy, setSortBy] = useState('trading_symbol');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  // Debounce search input by 250ms to prevent rapid query bursts
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
   // Watchlist tracker
   const [watchlistTokens, setWatchlistTokens] = useState<Set<string>>(new Set());
@@ -60,7 +69,7 @@ export const AllStocksTable: React.FC<AllStocksTableProps> = ({
     setLoading(true);
     try {
       const params: InstrumentSearchParams = {
-        q: searchQuery,
+        q: debouncedSearchQuery,
         exchange: exchangeFilter || undefined,
         instrument_type: instrumentTypeFilter || undefined,
         universe_id: universeFilter || undefined,
@@ -83,11 +92,11 @@ export const AllStocksTable: React.FC<AllStocksTableProps> = ({
 
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, exchangeFilter, instrumentTypeFilter, fnoOnlyFilter, universeFilter, sortBy, sortOrder, pageSize]);
+  }, [debouncedSearchQuery, exchangeFilter, instrumentTypeFilter, fnoOnlyFilter, universeFilter, sortBy, sortOrder, pageSize]);
 
   useEffect(() => {
     fetchStocks();
-  }, [page, pageSize, searchQuery, exchangeFilter, instrumentTypeFilter, fnoOnlyFilter, universeFilter, sortBy, sortOrder]);
+  }, [page, pageSize, debouncedSearchQuery, exchangeFilter, instrumentTypeFilter, fnoOnlyFilter, universeFilter, sortBy, sortOrder]);
 
   // Live WebSocket Tick Stream for currently viewed table page
   useEffect(() => {
@@ -147,9 +156,15 @@ export const AllStocksTable: React.FC<AllStocksTableProps> = ({
     }
 
     return () => {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ action: 'unsubscribe', tokens }));
-        ws.close();
+      if (ws) {
+        if (ws.readyState === WebSocket.OPEN) {
+          try {
+            ws.send(JSON.stringify({ action: 'unsubscribe', tokens }));
+          } catch (_) {}
+        }
+        try {
+          ws.close();
+        } catch (_) {}
       }
     };
   }, [instruments.map((i) => i.instrument_token).join(',')]);
@@ -260,7 +275,12 @@ export const AllStocksTable: React.FC<AllStocksTableProps> = ({
       </div>
 
       {/* Main Stock Table */}
-      <div className="bg-[#111827] rounded-xl border border-slate-800 shadow-xl overflow-hidden">
+      <div className="bg-[#111827] rounded-xl border border-slate-800 shadow-xl overflow-hidden relative">
+        {loading && (
+          <div className="w-full h-1 bg-slate-800 overflow-hidden">
+            <div className="w-full h-full bg-blue-500 animate-pulse"></div>
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-[#0d1322] border-b border-slate-800 text-slate-400 uppercase font-mono tracking-wider">
@@ -290,8 +310,8 @@ export const AllStocksTable: React.FC<AllStocksTableProps> = ({
                 <th className="py-3 px-4 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 font-sans">
-              {loading ? (
+            <tbody className={`divide-y divide-slate-800/60 font-sans ${loading && instruments.length > 0 ? 'opacity-70 transition-opacity' : 'transition-opacity'}`}>
+              {loading && instruments.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-16 text-center text-slate-400">
                     <div className="flex flex-col items-center justify-center space-y-2">
